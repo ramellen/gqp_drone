@@ -34,8 +34,27 @@ import os
 # Path to YuNet model — download once and place here, or leave blank to use Haar cascade fallback
 YUNET_MODEL_PATH = os.path.expanduser('~/models/face_detection_yunet_2023mar.onnx')
 
-# Haar cascade is always available as a fallback
-HAAR_CASCADE_PATH = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+# Haar cascade is always available as a fallback. cv2.data is stripped from
+# Ubuntu's apt-installed python3-opencv, so try several known locations and
+# fall back to None — the YuNet path is preferred anyway.
+def _resolve_haar_cascade_path():
+    candidates = []
+    try:
+        candidates.append(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    except AttributeError:
+        # cv2.data missing on Ubuntu apt-installed python3-opencv
+        pass
+    candidates += [
+        '/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml',
+        '/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml',
+        '/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_default.xml',
+    ]
+    for path in candidates:
+        if path and os.path.exists(path):
+            return path
+    return None  # face_detect_node will warn and refuse to use Haar fallback
+
+HAAR_CASCADE_PATH = _resolve_haar_cascade_path()
 
 # Minimum detection confidence for YuNet (0–1).
 # Lowered from 0.7 → 0.5 because rendered Gazebo PBR textures produce weaker
@@ -80,6 +99,13 @@ class FaceDetectNode(Node):
             self.detector_type = 'yunet'
             self.get_logger().info(f'Using YuNet detector: {YUNET_MODEL_PATH}')
         else:
+            if HAAR_CASCADE_PATH is None:
+                raise RuntimeError(
+                    "Neither YuNet nor a Haar cascade is available. Either:\n"
+                    f"  1. Download the YuNet model to {YUNET_MODEL_PATH}, or\n"
+                    "  2. Install Haar cascades: sudo apt install -y "
+                    "opencv-data"
+                )
             detector = cv2.CascadeClassifier(HAAR_CASCADE_PATH)
             self.detector_type = 'haar'
             self.get_logger().warn(
