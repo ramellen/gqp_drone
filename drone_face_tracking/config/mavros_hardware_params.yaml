@@ -1,0 +1,43 @@
+# mavros_hardware_params.yaml
+# ---------------------------
+# MAVROS configuration for the Raspberry Pi 4 + Aeroselfie H743 hardware
+# setup. Used by launch/hardware.launch.py.
+#
+# fcu_url here is the *default* — hardware.launch.py overrides it via the
+# `fcu_url:=...` launch argument so you can swap to USB without editing
+# this file (see the launch file).
+#
+# Serial format:  serial:///dev/serial0:921600
+#   - /dev/serial0 should symlink to ttyAMA0 (PL011), not ttyS0 (mini UART).
+#     Confirm with `ls -l /dev/serial0` after enabling `dtoverlay=disable-bt`.
+#   - 921600 baud must match SERIAL2_BAUD=921 (or whichever SERIALn you wired)
+#     on the H743.
+#
+# gcs_url is empty: no ground-station forwarding from the Pi. If you want
+# QGroundControl on a laptop to also see the FC over Wi-Fi, set this to
+# something like "udp://@<laptop-ip>:14550".
+
+mavros:
+  ros__parameters:
+    fcu_url: "serial:///dev/serial0:921600"
+    gcs_url: ""
+    target_system_id: 1
+    target_component_id: 1
+
+    # Same plugin denylist as the sim config — these plugins spam logs
+    # and we don't use any of their topics.
+    plugin_denylist:
+      - companion_process_status
+      - debug_value
+      - esc_status
+      - distance_sensor
+
+    # Velocities published by flight_ctrl_node are interpreted in the
+    # world frame (LOCAL_NED), matching the sim. If you find that on
+    # hardware the drone reacts in the body frame instead, switch to
+    # BODY_NED here AND in flight_ctrl_node's coordinate convention.
+    setpoint_velocity:
+      mav_frame: LOCAL_NED
+
+    imu:
+      frame_id: base_link

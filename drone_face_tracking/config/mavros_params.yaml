@@ -1,0 +1,15 @@
+mavros:
+  ros__parameters:
+    fcu_url: "udp://:14551@127.0.0.1:14555"
+    gcs_url: ""
+    target_system_id: 1
+    target_component_id: 1
+    plugin_denylist:
+      - companion_process_status
+      - debug_value
+      - esc_status
+      - distance_sensor
+    setpoint_velocity:
+      mav_frame: LOCAL_NED
+    imu:
+      frame_id: base_link
