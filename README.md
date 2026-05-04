@@ -3,63 +3,16 @@ Autonomous quadrotor that tracks a human face with vision-based control. The
 drone uses an onboard camera to detect a face, computes the normalized error
 between the face centroid and the frame center, and drives a
 proportional–derivative (PD) velocity controller to keep the face centered at
-a target standoff distance — entirely from onboard compute, with no external
+a target standoff distance entirely from onboard compute, with no external
 infrastructure required at runtime.
 The same software stack runs in two contexts:
 
-Simulation — Gazebo Harmonic + ArduPilot SITL on a Linux/WSL development host. Used for full mission-FSM and controller validation.
-Real hardware — Raspberry Pi 4 companion computer paired with an Aero Selfie H743 flight controller, an Arducam 5MP camera (OV5647 sensor), a four-in-one ESC, and a 6S LiPo battery.
+Simulation: Gazebo Harmonic + ArduPilot SITL on a Linux/WSL development host. Used for full mission-FSM and controller validation.
+Real hardware: Raspberry Pi 4 companion computer paired with an Aero Selfie H743 flight controller, an Arducam 5MP camera (OV5647 sensor), a four-in-one ESC, and a 6S LiPo battery.
 
 Only the source of camera frames and the destination of velocity commands
 differ between the two contexts; the five ROS 2 nodes themselves are
 unchanged.
-
-System Architecture
-Five ROS 2 (Humble) nodes communicating over a fixed topic graph:
-  Image source  ─── /camera/image_raw ───>  face_detect_node
- (Gazebo or                                       │
-  Pi camera)                                      │
-                                          /face_tracking/error
-                                                  │
-                                                  v
-   mission_node ── /mission/*_enabled ─>  flight_ctrl_node
-        ^                                         │
-        │                                /mavros/.../cmd_vel
-        │                                         │
-        └───────── /mavros/state ──── MAVROS <────┘
-                                       │
-                                  MAVLink 2
-                                       │
-                                       v
-                                 ArduPilot Copter
-                              (SITL or H743 hardware)
-NodeRolecamera_nodePublishes camera frames as sensor_msgs/Image (libcamera/picamera2 backend on Pi; OpenCV/MJPEG fallback for dev).face_detect_nodeYuNet ONNX face detection (Haar cascade fallback). Publishes normalized (x, y, area) error tuple.flight_ctrl_nodePer-axis PD controller; produces velocity setpoints for MAVROS at 20 Hz.mission_nodeFinite-state machine: INIT → WAIT_FCU → SET_GUIDED → ARM → TAKEOFF → HOVER → SEARCH ↔ TRACKING → LAND → DONE.plot_errors_nodeOffline utility: records the error/state topics during a run and renders a 3-panel matplotlib plot at shutdown.
-
-Repository Layout
-gqp_drone/
-├── README.md                     # this file
-├── package.xml                   # ROS 2 package manifest
-├── setup.py                      # Python package entry points
-├── setup.cfg
-├── resource/                     # ROS 2 ament resource marker
-├── drone_face_tracking/          # Python source
-│   ├── camera_node.py
-│   ├── face_detect_node.py
-│   ├── flight_ctrl_node.py
-│   ├── mission_node.py
-│   └── plot_errors_node.py
-├── launch/
-│   ├── simulation.launch.py      # Gazebo + SITL + all nodes
-│   └── hardware.launch.py        # Pi-side launch (no sim)
-├── config/
-│   ├── mavros_params.yaml        # MAVROS config for SITL
-│   └── mavros_hardware_params.yaml  # MAVROS config for serial UART
-├── worlds/                       # Gazebo world + face texture
-├── models/                       # SDF models
-├── docs/
-│   ├── raspberry_pi_setup.md     # End-to-end Pi bring-up guide
-│   └── report_sections.tex       # LaTeX report (intro/methods/results)
-└── setup_ros2_workspace.sh       # Convenience installer for the dev host
 
 Quick Start
 Option A — Run the Simulation (no hardware required)
@@ -128,27 +81,6 @@ camera_node publishing /camera/image_raw at 30 Hz from the OV5647 sensor.
 face_detect_node running YuNet inference on hardware frames.
 Flight controller wired to ESC; motors spin under bench test (props off).
 
-
-
-Outstanding
-
-TELEM2 UART link: wiring is in place and the FC is configured for MAVLink 2 at 57600 baud, but mavproxy does not yet acknowledge heartbeats from the Pi. The most likely cause is a wiring fault from cable preparation (one conductor was cut to remove the +5V line, but post-cut continuity was not verified before deployment, raising the possibility that a UART or GND line was severed by mistake). Resolution requires a multimeter check of the remaining conductors under power, then either an in-place splice or a fresh JST-GH pigtail.
-
-Future Work
-After the UART link is verified:
-
-End-to-end mission execution on the physical vehicle (bench-test arming with props off, then short hover, then full mission).
-Re-tuning the PD gains against the physical platform's dynamics (sim gains are conservative starting points, not flight-ready values).
-Characterization against disturbances (wind gusts, target motion).
-Optional: telemetry radio on TELEM1 for ground-station monitoring during flight.
-
-
-Documentation
-
-docs/raspberry_pi_setup.md — End-to-end Pi setup: flashing Ubuntu, installing ROS 2 + MAVROS + libcamera, wiring the H743, ArduPilot SERIAL configuration, link verification with mavproxy and MAVROS, troubleshooting cheat sheet.
-docs/report_sections.tex — Capstone report sections (Introduction, Setup & Materials, Methods, Results & Discussion, Hardware Implementation, Conclusion) with TikZ diagrams for the runtime topology and mission FSM, IEEE math notation for the controller equations, and BibTeX entries for the references.
-
-
 Visualizing the Camera Feed
 For headless development on the Pi, run web_video_server to stream the
 camera (and detector overlays) to any browser on the same network:
@@ -156,9 +88,6 @@ bashsudo apt install -y ros-humble-web-video-server
 ros2 run web_video_server web_video_server
 Then open http://<pi-host>:8080/stream?topic=/camera/image_raw (or
 /face_tracking/debug_image to see frames with detection annotations).
-
-License
-MIT. See LICENSE for full text.
 
 Acknowledgments
 
