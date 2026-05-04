@@ -25,28 +25,6 @@ Gazebo Harmonic
 ArduPilot SITL
 The ardupilot_gazebo plugin
 
-If you don't have these, the included script installs the ROS-side prerequisites:
-bash./setup_ros2_workspace.sh
-Build the workspace:
-bashcd ~/ros2_ws
-colcon build --symlink-install --packages-select drone_face_tracking
-source install/setup.bash
-Start ArduPilot SITL in one terminal:
-bashcd ~/ardupilot/ArduCopter
-sim_vehicle.py --console --map
-Launch the simulation in another terminal:
-bashros2 launch drone_face_tracking simulation.launch.py
-Gazebo will spawn the drone in front of a textured face. Within ~30 seconds
-the mission FSM will arm, take off, hover briefly, transition into
-TRACKING, and hold the face centered for the configured tracking window
-before landing autonomously.
-To record and plot tracking errors during a run:
-bashros2 run drone_face_tracking plot_errors_node
-The plot is saved to ~/drone_tracking_plots/ on Ctrl-C.
-Option B — Run on Real Hardware
-Hardware setup is non-trivial and is documented in detail in
-docs/raspberry_pi_setup.md. At a high level:
-
 Flash Ubuntu Server 22.04 64-bit to the Pi 4's SD card.
 Install ROS 2 Humble, MAVROS, libcamera, picamera2 on the Pi.
 Flash ArduPilot Copter (MatekH743 target) to the Aero Selfie H743 over USB DFU using STM32CubeProgrammer.
